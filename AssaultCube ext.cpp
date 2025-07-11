@@ -32,7 +32,7 @@ DWORD GetModuleBaseAddress(DWORD processID, const wchar_t* moduleName) {
 
 int main() {
 
-    SetConsoleTitleA("Assault Cube External - Made by lukeismadhot on discord");
+    SetConsoleTitleA("Assault Cube External - Made by luke.042 on discord");
 
     DWORD pid;
     if (!GetWindowThreadProcessId(FindWindowA(NULL, "AssaultCube"), &pid)) {
