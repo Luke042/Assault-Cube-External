@@ -4,7 +4,7 @@
 namespace gui
 {
 	// constant window size
-	constexpr int WIDTH = 500;
+	constexpr int WIDTH = 450;
 	constexpr int HEIGHT = 300;
 
 	// when this changes, exit threads
@@ -40,3 +40,9 @@ namespace gui
 	void EndRender() noexcept;
 	void Render() noexcept;
 }
+/*
+namespace overlay {
+	void RenderText() noexcept;
+
+	void RenderFPS_NoWindow() noexcept;
+}*/
