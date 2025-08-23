@@ -307,6 +307,8 @@ void gui::Render() noexcept
 	else if (selected_font == 1) {
 		io.Fonts->AddFontFromMemoryTTF(Roboto, sizeof(Roboto), 13.5f);
 	}
+	
+	ImDrawList* DL = ImGui::GetForegroundDrawList();
 
 	//menu styling
 	ImGuiStyle& style = ImGui::GetStyle();
@@ -443,7 +445,10 @@ void gui::Render() noexcept
 						ImGui::Text("Turn down your volume :)");
 					}
 					ImGui::Checkbox("Infinite Jump", &exploits::inf_jump);
-				//	ImGui::Checkbox("Kill Aura", &exploits::kill_aura);
+					ImGui::Checkbox("Kill Aura", &exploits::kill_aura);
+					if (exploits::kill_aura) {
+						ImGui::Text("(Use a sniper)");
+					}
 					ImGui::Checkbox("Static Ammo", &exploits::static_ammo);
 					ImGui::Checkbox("Static Health", &exploits::static_health);
 					if (exploits::static_health) {
