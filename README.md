@@ -11,6 +11,7 @@ Benzier Aimbot
 
 Exploits:
 Fast Fire
+Kill Aura
 Infinite Jump
 Static Ammo
 Static Health
