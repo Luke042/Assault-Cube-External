@@ -50,6 +50,27 @@ bool AttachToGame() {
 }
 uintptr_t lp = 0;
 
+struct Vec3 { float x, y, z; };
+struct Vec2 { float x, y; };
+
+bool WorldToScreen(const Vec3& pos, Vec2& screen, float matrix[16], int windowWidth, int windowHeight) {
+    float clipX = pos.x * matrix[0] + pos.y * matrix[1] + pos.z * matrix[2] + matrix[3];
+    float clipY = pos.x * matrix[4] + pos.y * matrix[5] + pos.z * matrix[6] + matrix[7];
+    float clipZ = pos.x * matrix[8] + pos.y * matrix[9] + pos.z * matrix[10] + matrix[11];
+    float clipW = pos.x * matrix[12] + pos.y * matrix[13] + pos.z * matrix[14] + matrix[15];
+
+    if (clipW < 0.1f)
+        return false;
+
+    float ndcX = clipX / clipW;
+    float ndcY = clipY / clipW;
+
+    screen.x = (windowWidth / 2.0f) * (ndcX + 1.0f);
+    screen.y = (windowHeight / 2.0f) * (1.0f - ndcY);
+
+    return true;
+}
+
 void save_pos(uintptr_t lp) {
 	DWORD lp_x_adrs = lp + 0x28;
 	DWORD lp_y_adrs = lp + 0x2C;
@@ -132,7 +153,6 @@ void CheatThread() {
 
         //fast fire exploit
         if (exploits::fast_shoot) {
-
             WriteProcessMemory(hProcess, (LPVOID)(baseAddress + 0xC73EA), &nop2, sizeof(nop2), NULL);
         }
         if (!exploits::fast_shoot) {
@@ -224,29 +244,6 @@ void CheatThread() {
             load_pos2(lp);
         }
 
-        //esp
-        if (visuals::esp_toggle) {
-
-            //read player count
-            int player_count;
-            ReadProcessMemory(hProcess, (LPVOID)(global_offsets::player_count), &player_count, sizeof(player_count), NULL);
-
-            //read the entity list base
-            uintptr_t entity_list_base;
-            ReadProcessMemory(hProcess, (LPVOID)(global_offsets::entity_list_addr + 0x4), &entity_list_base, sizeof(entity_list_base), NULL);
-            for (int i = 0; i < player_count; i++) {
-                //iterate through the entity list
-                uintptr_t entity_address;
-                ReadProcessMemory(hProcess, (LPCVOID)(entity_list_base + i * 0x4), &entity_address, sizeof(entity_address), NULL);
-
-                if (entity_address == 0) { continue; }
-                int player_health;
-                int new_health = 1;
-                ReadProcessMemory(hProcess, (LPVOID)(entity_address + player_offsets::health), &player_health, sizeof(player_health), NULL);
-                std::cout << player_health << std::endl;
-            }
-        }
-
             //perfect aim
             uintptr_t local_player_addr = baseAddress + 0x0017E0A8;
             //read the local player
@@ -311,9 +308,10 @@ void CheatThread() {
                     if (aim::trigger_team_check && team == local_player_team)
                         continue;
 
-                    }
-
-                    
+                    }          
+                    //read the view matrix
+                    float viewMatrix[16];
+                    ReadProcessMemory(hProcess, (LPCVOID)(baseAddress + 0x17DFD0), &viewMatrix, sizeof(viewMatrix), NULL);
 
                     //read enemy position
                     float enemy_posX, enemy_posY, enemy_posZ;
@@ -324,8 +322,8 @@ void CheatThread() {
                     //read your position
                     float lp_posX, lp_posY, lp_posZ;
                     ReadProcessMemory(hProcess, (LPCVOID)(local_player + 0x28), &lp_posX, sizeof(lp_posX), NULL);
-                    ReadProcessMemory(hProcess, (LPCVOID)(player_addr + 0x2C), &lp_posY, sizeof(lp_posY), NULL);
-                    ReadProcessMemory(hProcess, (LPCVOID)(player_addr + 0x30), &lp_posZ, sizeof(lp_posZ), NULL);
+                    ReadProcessMemory(hProcess, (LPCVOID)(local_player + 0x2C), &lp_posY, sizeof(lp_posY), NULL);
+                    ReadProcessMemory(hProcess, (LPCVOID)(local_player + 0x30), &lp_posZ, sizeof(lp_posZ), NULL);
 
                     //read enemy head position
                     float ex, ey, ez;
@@ -445,13 +443,27 @@ void CheatThread() {
 
                     //kill aura
                     if (exploits::kill_aura && best_target != 0) {
-                        enemy_posX;
-                        enemy_posY;
-                        enemy_posY + 5;
+                        if (team == local_player_team)
+                            continue;
+                        //we activate static ammo so you dont have to reload and we also activate fast shoot to remove shooting delays which makes it way way more blatant
+                        WriteProcessMemory(hProcess, (LPVOID)static_ammo, &nop2, sizeof(nop2), NULL);
+                        WriteProcessMemory(hProcess, (LPVOID)static_grenade, &nop2, sizeof(nop2), NULL);
+                        WriteProcessMemory(hProcess, (LPVOID)(baseAddress + 0xC73EA), &nop2, sizeof(nop2), NULL);  
+
                         WriteProcessMemory(hProcess, (LPVOID)(local_player + 0x28), &enemy_posX, sizeof(enemy_posX), NULL);
-                        WriteProcessMemory(hProcess, (LPVOID)(local_player + 0x28), &enemy_posY, sizeof(enemy_posY), NULL);
-                        WriteProcessMemory(hProcess, (LPVOID)(local_player + 0x28), &enemy_posZ, sizeof(enemy_posZ), NULL);
+                        WriteProcessMemory(hProcess, (LPVOID)(local_player + 0x2C), &enemy_posY, sizeof(enemy_posY), NULL);
+                        WriteProcessMemory(hProcess, (LPVOID)(local_player + 0x30), &enemy_posZ, sizeof(enemy_posZ), NULL);
+                        Click();
                     }
+                    if (!exploits::kill_aura) {
+                        BYTE sa_orig[2] = { 0xFE, 0x08 };
+                        BYTE fs_orig[2] = { 0x89, 0x08 };
+                        WriteProcessMemory(hProcess, (LPVOID)static_ammo, &sa_orig, sizeof(sa_orig), NULL);
+                        WriteProcessMemory(hProcess, (LPVOID)static_grenade, &sa_orig, sizeof(sa_orig), NULL);   
+                        WriteProcessMemory(hProcess, (LPVOID)(baseAddress + 0xC73EA), &fs_orig, sizeof(fs_orig), NULL);
+                    }
+
+
             }
             //overwrite health / ammo
             int l337 = 1337;
